@@ -10,6 +10,24 @@ def md5_code(text):
     return md.hexdigest().upper()
 
 
+def params_encrypt(t1: dict, t2: str):
+    md = hashlib.md5()
+    _ = t2 + ''.join(['%s%s' % (k, v) for k, v in sorted(t1.items())]) + t2
+    # print(_)
+    md.update(_.encode())
+    p1 = md.hexdigest()
+
+    return p1
+
+
+def checksum_md5(filename):
+    md5 = hashlib.md5()
+    with open(filename, 'rb') as f:
+        for chunk in iter(lambda: f.read(8192), b''):
+            md5.update(chunk)
+    return md5.hexdigest().upper()
+
+
 def paginate(items, page=None, per_page=None, error_out=True, max_per_page=None):
     """Returns ``per_page`` items from page ``page``.
 

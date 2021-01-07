@@ -38,7 +38,7 @@ def output_json(data, code, headers=None):
     else:
         result['code'] = 44444
         result['message'] = data['message']
-        result.update(data)
+        # result.update(data)
     response = make_response(json.dumps(result), code)
     response.headers.extend(headers or {})
     return response

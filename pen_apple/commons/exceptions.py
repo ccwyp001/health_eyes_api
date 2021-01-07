@@ -1,5 +1,6 @@
 from . import httpcodes
 
+
 class BaseException(Exception):
     http_code = httpcodes.HTTP_500_INTERNAL_SERVER_ERROR
     business_code = '0000000'
@@ -136,7 +137,8 @@ class QueryFail(BaseException):
     business_code = '400000'
     message = '查询失败'
 
-class KeepErro(BaseException):
+
+class KeepError(BaseException):
     http_code = httpcodes.HTTP_500_INTERNAL_SERVER_ERROR
     business_code = '300006'
     message = '保存现场失败'
