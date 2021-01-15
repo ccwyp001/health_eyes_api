@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from ..extensions import db, SLBigInteger, Geometry
+from ..extensions import db, SLBigInteger, Geometry, LongText
 import time
 
 
@@ -27,7 +27,7 @@ class GeoData(db.Model):
     province = db.Column(db.String(30))
     fullname = db.Column(db.String(30), unique=True)
     county = db.Column(db.String(20))
-    geometry = db.Column(Geometry)
+    geometry = db.Column(LongText)
     parent_id = db.Column(SLBigInteger)
     update_at = db.Column(SLBigInteger)
 

@@ -2,6 +2,7 @@
 
 from ..extensions import db, SLBigInteger
 import time
+import json
 
 
 class DataSource(db.Model):
@@ -74,6 +75,47 @@ class DataResult(db.Model):
     def update(self, kwargs):
         update_at = int(time.time())
         kwargs['update_at'] = update_at
+        for k, v in kwargs.items():
+            setattr(self, k, v)
+        return self
+
+
+class AgeGroup(db.Model):
+    __tablename__ = 'age_group'
+    id = db.Column(SLBigInteger, primary_key=True)
+    name = db.Column(db.String(20))
+    group = db.Column(db.String(100))
+    sign = db.Column(db.String(100))
+    update_at = db.Column(SLBigInteger)
+    disabled = db.Column(db.Integer)
+
+    def __repr__(self):
+        return '<AgeGroup %r>' % self.id
+
+    def to_dict(self):
+        return {c.name: getattr(self, c.name, None) for c in self.__table__.columns}
+
+    @classmethod
+    def from_data(cls, data):
+        update_at = int(time.time())
+        _ = AgeGroup(**data)
+        _.update_at = update_at
+        return _
+
+    def display(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'sign': self.sign,
+            'group': json.loads(self.group),
+            'update_at': self.update_at,
+            'disabled': self.disabled
+        }
+
+    def update(self, kwargs):
+        update_at = int(time.time())
+        kwargs['update_at'] = update_at
+        kwargs['id'] = self.id
         for k, v in kwargs.items():
             setattr(self, k, v)
         return self
