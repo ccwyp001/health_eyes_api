@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from ..extensions import db, SLBigInteger, Geometry, LongText
+from ..commons.geo_object import GeoObject
 import time
 
 
@@ -38,7 +39,7 @@ class GeoData(db.Model):
         return {c.name: getattr(self, c.name, None) for c in self.__table__.columns}
 
     def display(self):
-        return {}
+        return {'geojson': GeoObject(self.geometry).rawgeojson()}
 
     @staticmethod
     def new(kwargs):

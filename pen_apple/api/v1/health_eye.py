@@ -147,6 +147,34 @@ class Icd10ConfigApi(Resource):
         return 'ok'
 
 
+@api.resource('/geo')
+class GeoApi(Resource):
+    def get(self):
+        params = request.args
+        arg = params.get('fullname', 0)
+        if arg:
+            v_list = GeoData.query.filter(GeoData.fullname == arg).all()
+            return [_.display() for _ in v_list]
+        return []
+
+
+@api.resource('/icd10_list/_search')
+class Icd10ListApi(Resource):
+    def get(self):
+        params = request.args
+        arg = params.get('q', 0)
+        if arg and len(arg) >= 2:
+            rule = db.or_(
+                Icd10Data.name.like('%%%s%%' % arg),
+                Icd10Data.code.like('%%%s%%' % str(arg).upper()),
+                Icd10Data.inputcode1.like('%%%s%%' % str(arg).upper()),
+                Icd10Data.inputcode2.like('%%%s%%' % str(arg).upper()),
+            )
+            v_list = Icd10Data.query.filter(rule).distinct().all()
+            return [_.display() for _ in v_list]
+        return []
+
+
 @api.resource('/source')
 class DataSourceApi(Resource):
     def get(self):

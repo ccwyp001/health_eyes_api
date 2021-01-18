@@ -24,7 +24,14 @@ class Icd10Data(db.Model):
         return {c.name: getattr(self, c.name, None) for c in self.__table__.columns}
 
     def display(self):
-        return {}
+        return {
+            'name': self.name,
+            'code': self.code,
+            'level': self.level,
+            'inputcode1': self.inputcode1,
+            'inputcode2': self.inputcode2,
+            'parent_code': self.parent_code,
+        }
 
     @staticmethod
     def new(kwargs):
