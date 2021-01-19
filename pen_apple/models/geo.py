@@ -29,7 +29,8 @@ class GeoData(db.Model):
     fullname = db.Column(db.String(30), unique=True)
     county = db.Column(db.String(20))
     geometry = db.Column(LongText)
-    parent_id = db.Column(SLBigInteger)
+    parent_id = db.Column(SLBigInteger, db.ForeignKey('geo.id'), nullable=True)
+    parent = db.relationship('GeoData', backref='children', lazy='select', remote_side=[id])
     update_at = db.Column(SLBigInteger)
 
     def __repr__(self):
@@ -39,7 +40,15 @@ class GeoData(db.Model):
         return {c.name: getattr(self, c.name, None) for c in self.__table__.columns}
 
     def display(self):
-        return {'geojson': GeoObject(self.geometry).rawgeojson()}
+        return {
+            # 'children': [_.display() for _ in self.children] if self.children else '',
+            'type': 'Feature',
+            'properties': {
+                'name': self.name,
+                'center': [self.center_x, self.center_y]
+            },
+            'geometry': GeoObject(self.geometry).rawgeojson()
+        }
 
     @staticmethod
     def new(kwargs):

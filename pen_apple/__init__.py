@@ -1,10 +1,18 @@
 # -*- coding: utf-8 -*-
+import decimal
 from flask import Flask, make_response
 import json
 from werkzeug.utils import find_modules, import_string
 from config import config
 from .extensions import db, celery, SLBigInteger, LongText
 from . import models  # use for migrate
+
+
+class DecimalEncoder(json.JSONEncoder):
+    def default(self, o):
+        if isinstance(o, decimal.Decimal):
+            return float(o)
+        super(DecimalEncoder, self).default(o)
 
 
 def create_app(config_name):
@@ -39,7 +47,7 @@ def output_json(data, code, headers=None):
         result['code'] = 44444
         result['message'] = data['message']
         # result.update(data)
-    response = make_response(json.dumps(result), code)
+    response = make_response(json.dumps(result, cls=DecimalEncoder), code)
     response.headers.extend(headers or {})
     return response
 

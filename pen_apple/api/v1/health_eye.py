@@ -153,9 +153,12 @@ class GeoApi(Resource):
         params = request.args
         arg = params.get('fullname', 0)
         if arg:
-            v_list = GeoData.query.filter(GeoData.fullname == arg).all()
-            return [_.display() for _ in v_list]
-        return []
+            v_list = GeoData.query.filter(GeoData.fullname == arg).first()
+            return {
+                'type': 'FeatureCollection',
+                'features': [_.display() for _ in v_list.children]
+            } if v_list else {}
+        return {}
 
 
 @api.resource('/icd10_list/_search')
