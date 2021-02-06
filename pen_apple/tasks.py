@@ -168,11 +168,12 @@ def test(file_path):
 
 @celery.task
 def test_b(file_path, param_sign):
-    data = pre_deal(file_path)
+    data = pre_deal(file_path)   # 读入数据
     g = data.groupby(['ICD10'])
     df_new = g.count().sort_values(by=['IDCARD'], ascending=0)
     gg = df_new['IDCARD'].head(10).to_dict()
     filter_data = data[(data['ICD10'].map(lambda x: x in list(gg.keys())))]
+
     func_list = ['top', 'town_dis', 'org_dis', 'age_dis', 'occ_dis', 'gender_dis', 'ins_dis', 'time_dis']
     # func_name = 'org_dis'
     # value = globals()['function_' + func_name](data, filter_data)

@@ -26,9 +26,9 @@ class SelectApi(Resource):
 
 @api.resource('/data')
 class DataListApi(Resource):
-    def get(self):
-        params = request.args
-        source = params.get('source', 0)
+    def post(self):
+        data = request.json
+        source = data.get('source', 0)
         data_source = DataSource.query.filter(DataSource.sign == str(source)).first()
         if not data_source:
             data_source = DataSource.query.first()
@@ -95,15 +95,15 @@ class GroupsConfigApi(Resource):
         age_data = AgeGroup.query.filter(AgeGroup.sign == data['sign']).first()
         if age_data:
             return 'age group exists'
-        age_data = AgeGroup.from_data(data)
-        db.session.add(age_data)
-        db.session.commit()
+        with db.auto_commit_db():
+            age_data = AgeGroup.from_data(data)
+            db.session.add(age_data)
         return 'ok'
 
 
 @api.resource('/config/age_group/<int:p>')
 class GroupConfigApi(Resource):
-    def get(self):
+    def get(self, p):
         return 'health_eye hello'
 
     def put(self, p):
@@ -166,6 +166,8 @@ class Icd10ListApi(Resource):
     def get(self):
         params = request.args
         arg = params.get('q', 0)
+        page = int(params.get('page', 1))
+        per_page = int(params.get('per_page', 10))
         if arg and len(arg) >= 2:
             rule = db.or_(
                 Icd10Data.name.like('%%%s%%' % arg),
@@ -173,19 +175,31 @@ class Icd10ListApi(Resource):
                 Icd10Data.inputcode1.like('%%%s%%' % str(arg).upper()),
                 Icd10Data.inputcode2.like('%%%s%%' % str(arg).upper()),
             )
-            v_list = Icd10Data.query.filter(rule).distinct().all()
+            v_list = Icd10Data.query.filter(rule).distinct().paginate(page, per_page, error_out=False).items
             return [_.display() for _ in v_list]
         return []
 
 
-@api.resource('/source')
+@api.resource('/config/source')
 class DataSourceApi(Resource):
     def get(self):
-        data = DataSource.query.all()
-        return [_.display() for _ in data]
+        params = request.args
+        page = int(params.get('currentPage', 1))
+        per_page = int(params.get('pageSize', 10))
+        _paginate = DataSource.query.paginate(page, per_page, error_out=False)
+        return {
+            'list': [_.display() for _ in _paginate.items],
+            'pagination': {
+                'total': _paginate.total,
+                'pageSize': _paginate.per_page,
+                'current': _paginate.page,
+            }
+        }
 
     def post(self):
         file = request.files['file']
+        if not file.filename.split('.')[-1] in ['csv', 'xlsx']:
+            abort(415, 'unsupported file type')
         save_name = str(uuid.uuid4()) + '.' + file.filename.split('.')[-1]
         save_path = os.path.join(current_app.config['UPLOAD_FOLDER'], save_name)
         file.save(save_path)

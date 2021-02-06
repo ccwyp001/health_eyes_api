@@ -64,7 +64,8 @@ class Login(Resource):
         try:
             data = request.json
             # TODO login api
-
+            return {"status": 'ok',
+                    "currentAuthority": "admin"}
             if data:
                 identity = json.dumps({'id': data['userName']})
                 access_token = create_access_token(identity=identity)

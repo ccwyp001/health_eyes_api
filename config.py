@@ -24,8 +24,8 @@ class Config:
     # CELERY SETTING
     CELERYD_TASK_SOFT_TIME_LIMIT = 1800
     CELERYD_FORCE_EXECV = True  # 防止死锁
-    CELERYD_CONCURRENCY = 1  # 并发worker数
-    CELERYD_PREFETCH_MULTIPLIER = 2  # 每次取任务数
+    CELERYD_CONCURRENCY = 4  # 并发worker数
+    CELERYD_PREFETCH_MULTIPLIER = 4  # 每次取任务数
     CELERYD_MAX_TASKS_PER_CHILD = 200  # 每个worker最多执行万200个任务就会被销毁，可防止内存泄露
     CELERY_DISABLE_RATE_LIMITS = True  # 任务发出后，经过一段时间还未收到acknowledge , 就将任务重新交给其他worker执行
     CELERY_TIMEZONE = 'Asia/Shanghai'
