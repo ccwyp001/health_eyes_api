@@ -6,7 +6,7 @@ from flask import Blueprint, request, jsonify, current_app, abort
 from flask_restful import Api, Resource
 from ...commons import exceptions
 from ...commons.utils import checksum_md5, params_encrypt, md5_code
-from ...models import GeoData, DataSource, DataOption, DataResult, Icd10Data, AgeGroup
+from ...models import GeoData, DataSource, DataOption, DataResult, Icd10Data, AgeGroup, AnalysisRecord
 from ...extensions import db
 from ...tasks import test, test_b
 import os
@@ -26,10 +26,22 @@ class SelectApi(Resource):
 
 @api.resource('/data')
 class DataListApi(Resource):
+    def get(self):
+        params = request.args
+        sign = params.get('sign', 0)
+        _ = AnalysisRecord.query.filter(AnalysisRecord.sign == sign).first()
+        if _:
+            return {
+                'current': _.state,
+                'done': len([i for i in _.results if i.state == 2]),
+                'total': len(_.results),
+            }
+        return {}
+
     def post(self):
         data = request.json
         source = data.get('source', 0)
-        data_source = DataSource.query.filter(DataSource.sign == str(source)).first()
+        data_source = DataSource.query.filter(DataSource.id == int(source)).first()
         if not data_source:
             data_source = DataSource.query.first()
             if not data_source:

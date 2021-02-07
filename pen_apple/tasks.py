@@ -8,7 +8,7 @@ import requests
 # from suds.client import Client
 from flask import current_app
 from .extensions import celery, db
-from .models import DataOption, DataResult
+from .models import DataOption, DataResult, AnalysisRecord
 from hashlib import md5
 import pandas as pd
 
@@ -44,8 +44,10 @@ def pre_deal(file_path):
     return data
 
 
-def result_record(sign, name, value, state):
+def result_record(sign, name, value, state, sleep_time=0):
     print(name)
+    if sleep_time:
+        time.sleep(sleep_time)
     data = {
         'sign': sign,
         'name': name,
@@ -160,6 +162,24 @@ def function_town_dis(data, filter_data):
     return [{'x': k, 'y': v, 'icds': ggg[k]} for k, v in gg.items()]
 
 
+def analysis_record(sign, state, exists_flag=False, value=''):
+    data = {
+        'sign': sign,
+        'result': json.dumps(value),
+        'state': state
+    }
+    _ = AnalysisRecord.query.filter(AnalysisRecord.sign == data['sign']).first()
+    if _:
+        if exists_flag and _.state != 99:  # record exists and state is not error
+            return False
+        _.update(data)
+    else:
+        _ = AnalysisRecord.from_data(data)
+    with db.auto_commit_db():
+        db.session.add(_)
+    return True
+
+
 @celery.task
 def test(file_path):
     data = pre_deal(file_path)
@@ -168,20 +188,40 @@ def test(file_path):
 
 @celery.task
 def test_b(file_path, param_sign):
-    data = pre_deal(file_path)   # 读入数据
-    g = data.groupby(['ICD10'])
-    df_new = g.count().sort_values(by=['IDCARD'], ascending=0)
-    gg = df_new['IDCARD'].head(10).to_dict()
-    filter_data = data[(data['ICD10'].map(lambda x: x in list(gg.keys())))]
+    # loading
+    if not analysis_record(param_sign, 0, True):
+        return 'analysis done yet !'
 
-    func_list = ['top', 'town_dis', 'org_dis', 'age_dis', 'occ_dis', 'gender_dis', 'ins_dis', 'time_dis']
-    # func_name = 'org_dis'
-    # value = globals()['function_' + func_name](data, filter_data)
-    # result_record(param_sign, func_name, value, state=2)
-    [result_record(
-        param_sign,
-        name,
-        globals()['function_' + name](data, filter_data),
-        state=2
-    ) for name in func_list]
+    try:
+        data = pre_deal(file_path)  # 读入数据
+        # initializing
+        analysis_record(param_sign, 1)
+        g = data.groupby(['ICD10'])
+        df_new = g.count().sort_values(by=['IDCARD'], ascending=0)
+        gg = df_new['IDCARD'].head(10).to_dict()
+        filter_data = data[(data['ICD10'].map(lambda x: x in list(gg.keys())))]
+        # processing
+        analysis_record(param_sign, 2)
+        func_list = ['top', 'town_dis', 'org_dis', 'age_dis', 'occ_dis', 'gender_dis', 'ins_dis', 'time_dis']
+        # func_name = 'org_dis'
+        # value = globals()['function_' + func_name](data, filter_data)
+        # result_record(param_sign, func_name, value, state=2)
+        [result_record(
+            param_sign,
+            name,
+            '',
+            1
+        ) for name in func_list]
+        [result_record(
+            param_sign,
+            name,
+            globals()['function_' + name](data, filter_data),
+            2,
+            1
+        ) for name in func_list]
+        analysis_record(param_sign, 3)
+    except Exception as e:
+        print(str(e))
+        analysis_record(param_sign, 99)
+
     return True

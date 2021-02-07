@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from ..extensions import db, SLBigInteger, Geometry, LongText
+from ..extensions import db, SLBigInteger, LongText
 from ..commons.geo_object import GeoObject
 import time
 
