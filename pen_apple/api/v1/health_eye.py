@@ -39,22 +39,40 @@ class DataListApi(Resource):
         return {}
 
     def post(self):
+        d = {
+            # "source": "3",
+            # "clinicTime": ["2021-02-01", "2021-02-28"],
+            # "sickenTime": ["2021-02-01", "2021-02-28"],
+            "town": "0",
+            # "age": ["4", "6", "7"],
+            "occupation": "0",
+            # "icd10": ["E10", "E10.0", "E10.000", "E10.001", "E10.1"],
+            "gender": "0"
+        }
         data = request.json
         source = data.get('source', 0)
+        clinic_time = data.get('clinicTime', [])
+        sicken_time = data.get('sickenTime', [])
+        age_groups = data.get('age', [])
+        icd10s = data.get('icd10', [])
         data_source = DataSource.query.filter(DataSource.id == int(source)).first()
         if not data_source:
             data_source = DataSource.query.first()
             if not data_source:
                 abort(404, 'no data source')
         source = data_source.sign
-        path = data_source.path
+        age_groups_sign = [_.sign for _ in AgeGroup.query.filter(AgeGroup.id.in_(age_groups)).all()]
 
         data = {
-            'source': source
+            'source': source,
+            'clinic_time': clinic_time,
+            'sicken_time': sicken_time,
+            'age_groups': age_groups_sign,
+            'icd10s': icd10s,
         }
         # print(data)
         _ = params_encrypt(data, 'healtheye666')
-        test_b.delay(path, _)
+        test_b.delay(data, _)
         return _
 
 
@@ -178,14 +196,18 @@ class Icd10ListApi(Resource):
     def get(self):
         params = request.args
         arg = params.get('q', 0)
+        level = params.get('level', 4)
         page = int(params.get('page', 1))
         per_page = int(params.get('per_page', 10))
         if arg and len(arg) >= 2:
-            rule = db.or_(
-                Icd10Data.name.like('%%%s%%' % arg),
-                Icd10Data.code.like('%%%s%%' % str(arg).upper()),
-                Icd10Data.inputcode1.like('%%%s%%' % str(arg).upper()),
-                Icd10Data.inputcode2.like('%%%s%%' % str(arg).upper()),
+            rule = db.and_(
+                db.or_(
+                    Icd10Data.name.like('%%%s%%' % arg),
+                    Icd10Data.code.like('%%%s%%' % str(arg).upper()),
+                    Icd10Data.inputcode1.like('%%%s%%' % str(arg).upper()),
+                    Icd10Data.inputcode2.like('%%%s%%' % str(arg).upper()),
+                ),
+                Icd10Data.level == int(level),
             )
             v_list = Icd10Data.query.filter(rule).distinct().paginate(page, per_page, error_out=False).items
             return [_.display() for _ in v_list]

@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+import datetime
+import traceback
+
 import os
 import json
 import time
@@ -8,7 +11,7 @@ import requests
 # from suds.client import Client
 from flask import current_app
 from .extensions import celery, db
-from .models import DataOption, DataResult, AnalysisRecord
+from .models import DataOption, DataResult, AnalysisRecord, DataSource, AgeGroup
 from hashlib import md5
 import pandas as pd
 
@@ -64,14 +67,14 @@ def result_record(sign, name, value, state, sleep_time=0):
     return True
 
 
-def function_top(data, filter_data):
+def function_top(data, filter_data, **kwargs):
     g = data.groupby(['ICD10'])
     df_new = g.count().sort_values(by=['IDCARD'], ascending=0)
     gg = df_new['IDCARD'].head(10).to_dict()
     return [{'x': k, 'y': v} for k, v in gg.items()]
 
 
-def function_org_dis(data, filter_data):
+def function_org_dis(data, filter_data, **kwargs):
     g = filter_data.groupby(['ORG_CODE', 'ICD10'])
     df_new = g.count().sort_index(axis=0, ascending=[1, 1])
     gg = df_new['IDCARD'].fillna(0).to_dict()
@@ -88,7 +91,7 @@ def function_org_dis(data, filter_data):
     return [{'x': k, 'y': v, 'icds': ggg[k]} for k, v in gg.items()]
 
 
-def function_time_dis(data, filter_data):
+def function_time_dis(data, filter_data, **kwargs):
     g = filter_data.groupby(['ICD10']).resample('D')
     df_new = g.count()
     gg = df_new['IDCARD'].fillna(0).to_dict()
@@ -105,12 +108,26 @@ def function_time_dis(data, filter_data):
     return [{'x': str(k), 'y': v, 'icds': ggg[k]} for k, v in gg.items()]
 
 
-def function_age_dis(data, filter_data):
+def function_age_dis(data, filter_data, **kwargs):
+    age_groups = kwargs.get('age_groups')
+    if age_groups:
+        age_groups = [
+            {'name': _.name, 'list': json.loads(_.group)}
+            for _ in AgeGroup.query.filter(AgeGroup.sign.in_(age_groups)).all()
+        ]
+    else:
+        age_groups = [{
+            'name': '默认分组',
+            'list': [0, 1, 2, 3, 4, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 60, 70, 80]
+        }]
+
     g = filter_data.groupby(['NL'])
     df_new = g.count().sort_index(axis=0, ascending=1)
     gg = df_new['IDCARD']
-    group_list = [
-        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85]
+    return [{'groupName': group['name'], 'groupData': age_dis_spec(gg, group['list'])} for group in age_groups]
+
+
+def age_dis_spec(data, group_list):
     nl_list = []
     for i in range(len(group_list)):
         if i == 0:
@@ -123,30 +140,30 @@ def function_age_dis(data, filter_data):
             nl_list.append([group_list[i] + 1, group_list[i + 1] if i < len(group_list) - 1 else ''])
 
     return [{'x': str(i[0]) if i[0] == i[1] else '{}-{}'.format(i[0], i[1]),
-             'y': int(gg[i[0]:i[1] if isinstance(i[1], int) else None].sum())} for i in nl_list]
+             'y': int(data[i[0]:i[1] if isinstance(i[1], int) else None].sum())} for i in nl_list]
 
 
-def function_gender_dis(data, filter_data):
+def function_gender_dis(data, filter_data, **kwargs):
     g = filter_data.groupby(['XB'])
     df_new = g.count().sort_index(axis=0, ascending=1)
     return df_new['IDCARD'].to_dict()
 
 
-def function_occ_dis(data, filter_data):
+def function_occ_dis(data, filter_data, **kwargs):
     g = filter_data.groupby(['OCCUPATION'])
     df_new = g.count().sort_index(axis=0, ascending=[1])
     gg = df_new['IDCARD'].fillna(0).to_dict()
     return [{'x': k, 'y': v} for k, v in gg.items()]
 
 
-def function_ins_dis(data, filter_data):
+def function_ins_dis(data, filter_data, **kwargs):
     g = filter_data.groupby(['INS'])
     df_new = g.count().sort_index(axis=0, ascending=[1])
     gg = df_new['IDCARD'].fillna(0).to_dict()
     return [{'x': k, 'y': v} for k, v in gg.items()]
 
 
-def function_town_dis(data, filter_data):
+def function_town_dis(data, filter_data, **kwargs):
     g = filter_data.groupby(['TOWN', 'ICD10'])
     df_new = g.count().sort_index(axis=0, ascending=[1, 1])
     gg = df_new['IDCARD'].fillna(0).to_dict()
@@ -187,15 +204,38 @@ def test(file_path):
 
 
 @celery.task
-def test_b(file_path, param_sign):
+def test_b(param_data: dict, param_sign):
     # loading
     if not analysis_record(param_sign, 0, True):
         return 'analysis done yet !'
+
+    source = param_data.get('source', 0)
+    clinic_time = param_data.get('clinic_time', [])
+    sicken_time = param_data.get('sicken_time', [])
+    age_groups = param_data.get('age_groups', [])
+    icd10s = param_data.get('icd10s', [])
+
+    data_source = DataSource.query.filter(DataSource.sign == source).first()
+    file_path = data_source.path
 
     try:
         data = pre_deal(file_path)  # 读入数据
         # initializing
         analysis_record(param_sign, 1)
+        if clinic_time:
+            data = data[clinic_time[0]:clinic_time[1]]
+        if sicken_time:
+            data = data[(data['SICKEN_TIME'].map(
+                lambda x:
+                datetime.datetime.strptime(sicken_time[0], '%Y-%m-%d')
+                <=
+                x
+                <=
+                datetime.datetime.strptime(sicken_time[1], '%Y-%m-%d')
+            ))]
+        if icd10s:
+            data = data[(data['ICD10'].map(lambda x: x in icd10s))]
+
         g = data.groupby(['ICD10'])
         df_new = g.count().sort_values(by=['IDCARD'], ascending=0)
         gg = df_new['IDCARD'].head(10).to_dict()
@@ -209,19 +249,20 @@ def test_b(file_path, param_sign):
         [result_record(
             param_sign,
             name,
-            '',
+            [],
             1
         ) for name in func_list]
         [result_record(
             param_sign,
             name,
-            globals()['function_' + name](data, filter_data),
+            globals()['function_' + name](data, filter_data, **{'age_groups': age_groups}),
             2,
             1
         ) for name in func_list]
         analysis_record(param_sign, 3)
     except Exception as e:
-        print(str(e))
+        print(e)
+        traceback.print_exc()
         analysis_record(param_sign, 99)
 
     return True
