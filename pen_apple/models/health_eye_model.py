@@ -9,8 +9,12 @@ class DataSource(db.Model):
     __tablename__ = 'data_source'
     id = db.Column(SLBigInteger, primary_key=True)
     name = db.Column(db.String(100))
+    desc = db.Column(db.Text)
     sign = db.Column(db.String(100))
     path = db.Column(db.String(100))
+    rate = db.Column(db.Integer, default=0)
+    status = db.Column(db.Integer, default=0)  # 0 not init, 1 enable, 2 failed
+
     update_at = db.Column(SLBigInteger)
 
     def __repr__(self):
@@ -23,8 +27,11 @@ class DataSource(db.Model):
         return {
             'id': self.id,
             'name': self.name,
+            'desc': self.desc,
             'sign': self.sign,
             'path': self.path,
+            'rate': self.rate,
+            'status': self.status,
             'update_at': self.update_at
         }
 
@@ -149,4 +156,3 @@ class AgeGroup(db.Model):
         for k, v in kwargs.items():
             setattr(self, k, v)
         return self
-

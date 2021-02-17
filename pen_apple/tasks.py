@@ -23,11 +23,27 @@ def pre_deal(file_path):
     :param file_path: file path
     :return: file data stream
     """
+    cols_map = {
+        'NL': '年龄',
+        'ORG_CODE': '诊断单位',
+        'INS': '险种',
+        'TOWN': '乡镇',
+        'XB': '性别',
+        'OCCUPATION': '职业',
+        'COMMUNITY': '村居',
+        'CLINIC_TIME': '诊断时间',
+        'SICKEN_TIME': '发病时间',
+        'IDCARD': '身份证号',
+        'ICD10': 'ICD10',
+    }
+
     if file_path.split('.')[-1] == 'csv':
         data = pd.read_csv(file_path)
     else:
         data = pd.read_excel(file_path)
     # data.to_csv('eee.csv', index=False, header=False, mode='a')
+    print(data.columns.to_list())
+
 
     data['NL'] = pd.to_numeric(data['NL'], errors='coerce', downcast='integer')
     data['ORG_CODE'] = data['ORG_CODE'].astype('category')
@@ -200,7 +216,18 @@ def analysis_record(sign, state, exists_flag=False, value=''):
 @celery.task
 def test(file_path):
     data = pre_deal(file_path)
+
+    data.to_hdf(file_path + '.h5', 'aaa', mode='w', format="table")
     return function_top(data, '')
+
+
+def load_hdf(file_path: str) -> object:
+    """
+
+    :param file_path:
+    """
+    data = pd.read_hdf(file_path + '.h5', key='aaa')
+    return data
 
 
 @celery.task
@@ -219,7 +246,9 @@ def test_b(param_data: dict, param_sign):
     file_path = data_source.path
 
     try:
-        data = pre_deal(file_path)  # 读入数据
+        # 读入数据
+        # data = pre_deal(file_path)
+        data = load_hdf(file_path)
         # initializing
         analysis_record(param_sign, 1)
         if clinic_time:

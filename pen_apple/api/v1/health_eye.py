@@ -2,7 +2,7 @@
 import tempfile
 import json
 from functools import wraps
-from flask import Blueprint, request, jsonify, current_app, abort
+from flask import Blueprint, request, jsonify, current_app, abort, Response
 from flask_restful import Api, Resource
 from ...commons import exceptions
 from ...commons.utils import checksum_md5, params_encrypt, md5_code
@@ -17,11 +17,25 @@ bp = Blueprint('health_eye', __name__)
 api = Api(bp)
 
 
-@api.resource('/')
+@api.resource('/template')
 class SelectApi(Resource):
     def get(self):
-        params = request.args
-        return params
+
+        file_path = os.path.join(current_app.config['UPLOAD_FOLDER'], 'template.xlsx')
+
+        def generate():
+            with open(file_path, "rb") as f:
+                while True:
+                    chunk = f.read(10 * 1024 * 1024)
+                    if not chunk:
+                        break
+                    yield chunk
+
+        response = Response(generate(), mimetype='application/octet-stream')
+        response.headers['Content-Disposition'] = 'attachment; filename={}.xlsx'.format("template")
+        response.headers['content-length'] = os.stat(str(file_path)).st_size
+        response.headers["Content-type"] = "application/x-xls"
+        return response
 
 
 @api.resource('/data')
@@ -214,7 +228,7 @@ class Icd10ListApi(Resource):
         return []
 
 
-@api.resource('/config/source')
+@api.resource('/config/sources')
 class DataSourceApi(Resource):
     def get(self):
         params = request.args
@@ -249,8 +263,8 @@ class DataSourceApi(Resource):
                 }
 
         data_source = DataSource.from_data(data)
-        db.session.add(data_source)
-        db.session.commit()
+        with db.auto_commit_db():
+            db.session.add(data_source)
         test.delay(save_path)
         #
         # if os.path.getsize(save_path) > 10 * 1024 * 1024:
@@ -259,4 +273,13 @@ class DataSourceApi(Resource):
         return data
 
     def delete(self):
-        pass
+        data = request.json
+        ids = data.get('ids', [])
+        for i in ids:
+            s = DataSource.query.get(i)
+            if not s:
+                continue
+            with db.auto_commit_db():
+                db.session.delete(s)
+            os.remove(s.path)
+        return 'ok'
