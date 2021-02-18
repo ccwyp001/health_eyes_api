@@ -16,53 +16,6 @@ from hashlib import md5
 import pandas as pd
 
 
-def pre_deal(file_path):
-    """
-    :keyword 预处理：打开csv，xlsx文件，索引类型优化，并排序
-
-    :param file_path: file path
-    :return: file data stream
-    """
-    cols_map = {
-        'NL': '年龄',
-        'ORG_CODE': '诊断单位',
-        'INS': '险种',
-        'TOWN': '乡镇',
-        'XB': '性别',
-        'OCCUPATION': '职业',
-        'COMMUNITY': '村居',
-        'CLINIC_TIME': '诊断时间',
-        'SICKEN_TIME': '发病时间',
-        'IDCARD': '身份证号',
-        'ICD10': 'ICD10',
-    }
-
-    if file_path.split('.')[-1] == 'csv':
-        data = pd.read_csv(file_path)
-    else:
-        data = pd.read_excel(file_path)
-    # data.to_csv('eee.csv', index=False, header=False, mode='a')
-    print(data.columns.to_list())
-
-
-    data['NL'] = pd.to_numeric(data['NL'], errors='coerce', downcast='integer')
-    data['ORG_CODE'] = data['ORG_CODE'].astype('category')
-    data['INS'] = data['INS'].astype('category')
-    data['TOWN'] = data['TOWN'].astype('category')
-    data['XB'] = data['XB'].astype('category')
-    data['OCCUPATION'] = data['OCCUPATION'].astype('category')
-    data['COMMUNITY'] = data['COMMUNITY'].astype('category')
-    data['CLINIC_TIME'] = pd.to_datetime(data['CLINIC_TIME'], format='%Y-%m-%d %H:%M:%S')
-    data['SICKEN_TIME'] = pd.to_datetime(data['SICKEN_TIME'], format='%Y-%m-%d %H:%M:%S')
-
-    data.set_index('CLINIC_TIME', inplace=True)
-    data.index = pd.DatetimeIndex(data.index)
-    data = data.sort_index(axis=0, ascending=1)
-    data = data.sort_index(axis=1, ascending=1)
-    data = data.dropna(how='any')
-    return data
-
-
 def result_record(sign, name, value, state, sleep_time=0):
     print(name)
     if sleep_time:
@@ -213,12 +166,82 @@ def analysis_record(sign, state, exists_flag=False, value=''):
     return True
 
 
-@celery.task
-def test(file_path):
-    data = pre_deal(file_path)
+def source_init_record(source_id, rate, status, value=''):
+    data = {
+        'rate': rate,
+        'result': json.dumps(value),
+        'status': status,
+    }
+    _ = DataSource.query.get(source_id)
+    if _:
+        _.update(data)
+    with db.auto_commit_db():
+        db.session.add(_)
+    return True
 
-    data.to_hdf(file_path + '.h5', 'aaa', mode='w', format="table")
-    return function_top(data, '')
+
+def pre_deal(file_path, col_list=None):
+    """
+    :keyword 预处理：打开csv，xlsx文件，索引类型优化，并排序
+
+    :param file_path: file path
+    :param col_list: cols list which used
+    :return: file data stream
+    """
+
+    if file_path.split('.')[-1] == 'csv':
+        data = pd.read_csv(file_path, usecols=col_list)
+    else:
+        data = pd.read_excel(file_path, usecols=col_list)
+    # data.to_csv('eee.csv', index=False, header=False, mode='a')
+    print(data.columns.to_list())
+
+    return data
+
+
+@celery.task
+def test(source_id):
+    data_source = DataSource.query.get(source_id)
+    file_path = data_source.path
+    cols_config = json.loads(data_source.colsConfig)
+    rate = 20
+    try:
+        pre_data = pre_deal(file_path, [_ for _ in cols_config.values()])
+
+        rate = 40
+        source_init_record(source_id, rate, 0)
+
+        data = pd.DataFrame()
+        for k, v in cols_config.items():
+            data[k] = pre_data[v]
+
+        data['NL'] = pd.to_numeric(data['NL'], errors='coerce', downcast='integer')
+        data['ORG_CODE'] = data['ORG_CODE'].astype('category')
+        data['INS'] = data['INS'].astype('category')
+        data['TOWN'] = data['TOWN'].astype('category')
+        data['XB'] = data['XB'].astype('category')
+        data['OCCUPATION'] = data['OCCUPATION'].astype('category')
+        data['COMMUNITY'] = data['COMMUNITY'].astype('category')
+        data['CLINIC_TIME'] = pd.to_datetime(data['CLINIC_TIME'], format='%Y-%m-%d %H:%M:%S')
+        data['SICKEN_TIME'] = pd.to_datetime(data['SICKEN_TIME'], format='%Y-%m-%d %H:%M:%S')
+
+        rate = 70
+        source_init_record(source_id, rate, 0)
+
+        data.set_index('CLINIC_TIME', inplace=True)
+        data.index = pd.DatetimeIndex(data.index)
+        data = data.sort_index(axis=0, ascending=True)
+        data = data.sort_index(axis=1, ascending=True)
+        data = data.dropna(how='any')
+        data.to_hdf(file_path + '.h5', 'aaa', mode='w', format="table")
+        print(function_top(data, ''))
+        rate = 100
+        source_init_record(source_id, rate, 1)
+    except Exception as e:
+        print(e)
+        traceback.print_exc()
+        source_init_record(source_id, rate, 2, str(e))
+    return True
 
 
 def load_hdf(file_path: str) -> object:

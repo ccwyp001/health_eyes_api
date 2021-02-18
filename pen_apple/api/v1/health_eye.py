@@ -229,7 +229,7 @@ class Icd10ListApi(Resource):
 
 
 @api.resource('/config/sources')
-class DataSourceApi(Resource):
+class DataSourcesApi(Resource):
     def get(self):
         params = request.args
         page = int(params.get('currentPage', 1))
@@ -257,20 +257,45 @@ class DataSourceApi(Resource):
             os.remove(save_path)
             abort(400, 'this file is exists')
 
+        if save_path.split('.')[-1] == 'csv':
+            data = pd.read_csv(save_path)
+        else:
+            data = pd.read_excel(save_path)
+
         data = {'name': file.filename.split('.')[0],
                 'path': save_path,
                 'sign': sign,
+                'cols': json.dumps(data.columns.to_list()),
                 }
-
         data_source = DataSource.from_data(data)
         with db.auto_commit_db():
             db.session.add(data_source)
-        test.delay(save_path)
+        # test.delay(save_path)
         #
         # if os.path.getsize(save_path) > 10 * 1024 * 1024:
         #     os.remove(save_path)
         #     abort(415)
         return data
+
+    def put(self):
+        data = request.json
+        s_id = data.get('id', '')
+        data['colsConfig'] = json.dumps(data['colsConfig'])
+        source_data = DataSource.query.get(s_id)
+        need_init = False
+        if not source_data:
+            return 'source data not found'
+        if md5_code(data['colsConfig']) != md5_code(source_data.colsConfig):
+            data['rate'] = 10
+            data['status'] = 0
+            need_init = True
+
+        with db.auto_commit_db():
+            source_data.update(data)
+            db.session.add(source_data)
+        if need_init:
+            test.delay(s_id)
+        return 'ok'
 
     def delete(self):
         data = request.json
@@ -281,5 +306,7 @@ class DataSourceApi(Resource):
                 continue
             with db.auto_commit_db():
                 db.session.delete(s)
+            if s.status == 1:
+                os.remove(s.path + '.h5')
             os.remove(s.path)
         return 'ok'

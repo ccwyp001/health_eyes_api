@@ -12,9 +12,11 @@ class DataSource(db.Model):
     desc = db.Column(db.Text)
     sign = db.Column(db.String(100))
     path = db.Column(db.String(100))
+    result = db.Column(db.Text)
     rate = db.Column(db.Integer, default=0)
     status = db.Column(db.Integer, default=0)  # 0 not init, 1 enable, 2 failed
-
+    cols = db.Column(db.Text)
+    colsConfig = db.Column(db.Text, default='[]')
     update_at = db.Column(SLBigInteger)
 
     def __repr__(self):
@@ -30,8 +32,11 @@ class DataSource(db.Model):
             'desc': self.desc,
             'sign': self.sign,
             'path': self.path,
+            'cols': json.loads(self.cols),
+            'colsConfig': json.loads(self.colsConfig),
             'rate': self.rate,
             'status': self.status,
+            'result': self.result,
             'update_at': self.update_at
         }
 
@@ -41,6 +46,17 @@ class DataSource(db.Model):
         _ = DataSource(**data)
         _.update_at = update_at
         return _
+
+    def update(self, kwargs):
+        update_at = int(time.time())
+        kwargs['update_at'] = update_at
+        kwargs['id'] = self.id
+        kwargs['sign'] = self.sign
+        kwargs['path'] = self.path
+        kwargs['cols'] = self.cols
+        for k, v in kwargs.items():
+            setattr(self, k, v)
+        return self
 
 
 class DataOption(db.Model):

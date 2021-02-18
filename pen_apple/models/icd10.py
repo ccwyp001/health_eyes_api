@@ -8,17 +8,19 @@ class Icd10Data(db.Model):
     __tablename__ = 'icd10'
     id = db.Column(SLBigInteger, primary_key=True)
     level = db.Column(db.Integer)
-    code = db.Column(db.String(20))
+    code = db.Column(db.String(20), unique=True)
     name = db.Column(db.String(100))
     d_code = db.Column(db.String(20))
     type = db.Column(db.String(100))
-    parent_code = db.Column(db.String(20))
+    parent_code = db.Column(db.String(20), db.ForeignKey('icd10.code'), nullable=True)
+    parent = db.relationship('Icd10Data', backref='children', lazy='select', remote_side=[code])
+
     inputcode1 = db.Column(db.String(20))
     inputcode2 = db.Column(db.String(20))
     update_at = db.Column(SLBigInteger)
 
     def __repr__(self):
-        return '<Icd10Data %r>' % self.name
+        return '<Icd10Data %r %r>' % (self.code, self.name)
 
     def to_dict(self):
         return {c.name: getattr(self, c.name, None) for c in self.__table__.columns}
