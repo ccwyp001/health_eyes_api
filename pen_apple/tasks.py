@@ -11,7 +11,7 @@ import requests
 # from suds.client import Client
 from flask import current_app
 from .extensions import celery, db
-from .models import DataOption, DataResult, AnalysisRecord, DataSource, AgeGroup
+from .models import DataOption, DataResult, AnalysisRecord, DataSource, AgeGroup, Icd10Data
 from hashlib import md5
 import pandas as pd
 
@@ -199,6 +199,20 @@ def pre_deal(file_path, col_list=None):
     return data
 
 
+def query_icd(row):
+    # _ = Icd10Data.query.filter(Icd10Data.code == row['ICD10']).first()
+    result = [None, None, None]
+
+    # def set_code(i):
+    #     result[i.level - 2] = i.code
+    #     return set_code(i.parent) if i.level > 2 else True
+    #
+    # if _:
+    #     set_code(_)
+    # print(result)
+    return result
+
+
 @celery.task
 def test(source_id):
     data_source = DataSource.query.get(source_id)
@@ -225,6 +239,9 @@ def test(source_id):
         data['CLINIC_TIME'] = pd.to_datetime(data['CLINIC_TIME'], format='%Y-%m-%d %H:%M:%S')
         data['SICKEN_TIME'] = pd.to_datetime(data['SICKEN_TIME'], format='%Y-%m-%d %H:%M:%S')
 
+        #TODO 家里网太慢了明天搞
+        # data[['ICD10_2', 'ICD10_3', 'ICD10_4']] = data.apply(query_icd, axis=1, result_type="expand")
+        # print(data)
         rate = 70
         source_init_record(source_id, rate, 0)
 
@@ -232,7 +249,8 @@ def test(source_id):
         data.index = pd.DatetimeIndex(data.index)
         data = data.sort_index(axis=0, ascending=True)
         data = data.sort_index(axis=1, ascending=True)
-        data = data.dropna(how='any')
+        data = data.dropna(how='all')
+        print(data)
         data.to_hdf(file_path + '.h5', 'aaa', mode='w', format="table")
         print(function_top(data, ''))
         rate = 100
