@@ -61,15 +61,18 @@ def function_org_dis(data, filter_data, **kwargs):
 
 
 def function_time_dis(data, filter_data, **kwargs):
-    g = filter_data.groupby(['ICD10']).resample('D')
-    df_new = g.count()
+
+    g = filter_data.groupby(['ICD10'])
+    df_new = g.resample('D').count()
     gg = df_new['IDCARD'].fillna(0).to_dict()
     ggg = {}
     for k, v in gg.items():
         if ggg.get(k[1]):
             ggg[k[1]].update({k[0]: v})
         else:
-            ggg[k[1]] = {k[0]: v}
+            ggg[k[1]] = {}
+            [ggg[k[1]].update({_: 0}) for _ in g.count().index]
+            ggg[k[1]].update({k[0]: v})
 
     g = filter_data.resample('D')
     df_new = g.count()

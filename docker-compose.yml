@@ -1,25 +1,73 @@
 version: "3.5"
 
 services:
+  mysql:
+    image: mysql:5.7
+    container_name: "health_eye_db"
+    ports:
+      - 3306:3306
+    restart: always
+    volumes:
+      - /app/health_eye_db/data:/var/lib/mysql
+      - /app/health_eye_db/logs:/var/log/mysql
+    environment:
+      - TZ=Asia/Shanghai
+      - MYSQL_ROOT_PASSWORD=123456
+
+  redis:
+    image: redis
+    container_name: "health_eye_redis"
+    restart: always
+    environment:
+      - TZ=Asia/Shanghai
+
   app:
     build: ./
     container_name: "health_eye_api"
     restart: unless-stopped
+    depends_on:
+      - redis
+      - mysql
+    links:
+      - redis:health_eye_redis
+      - mysql:health_eye_db
     volumes:
       - ./health_eye_api.ini:/etc/supervisor.d/health_eye_api.ini
-      - ./instance/config.py:/app/instance/config.py
+      - ./instance/config_docker.py:/app/instance/config.py
+      - ./pen_apple:/app/pen_apple
+      - ./log:/app/log
     environment:
       - TZ=Asia/Shanghai
+
+  celery:
+    build: ./
+    container_name: "health_eye_celery"
+    restart: unless-stopped
+    depends_on:
+      - redis
+      - mysql
+    links:
+      - redis:health_eye_redis
+      - mysql:health_eye_db
+    volumes:
+      - ./health_eye_celery.ini:/etc/supervisor.d/health_eye_celery.ini
+      - ./instance/config_docker.py:/app/instance/config.py
+      - ./pen_apple:/app/pen_apple
+      - ./log:/app/log
+    environment:
+      - TZ=Asia/Shanghai
+
   nginx:
     image: nginx
     ports:
-      - 8090:8090
+      - 80:80
     container_name: "health_eye_nginx"
     restart: unless-stopped
     links:
      - app:health_eye_api
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf
+      - /app/health_eye_web/dist:/app/dist
       - ./health_eye_api.conf:/etc/nginx/conf.d/health_eye_api.conf
     environment:
       - TZ=Asia/Shanghai
