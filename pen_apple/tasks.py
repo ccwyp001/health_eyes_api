@@ -203,15 +203,15 @@ def pre_deal(file_path, col_list=None):
 
 
 def query_icd(row):
-    # _ = Icd10Data.query.filter(Icd10Data.code == row['ICD10']).first()
+    _ = Icd10Data.query.filter(Icd10Data.code == row['ICD10']).first()
     result = [None, None, None]
 
-    # def set_code(i):
-    #     result[i.level - 2] = i.code
-    #     return set_code(i.parent) if i.level > 2 else True
-    #
-    # if _:
-    #     set_code(_)
+    def set_code(i):
+        result[i.level - 2] = i.code
+        return set_code(i.parent) if i.level > 2 else True
+
+    if _:
+        set_code(_)
     # print(result)
     return result
 
@@ -242,9 +242,8 @@ def test(source_id):
         data['CLINIC_TIME'] = pd.to_datetime(data['CLINIC_TIME'], format='%Y-%m-%d %H:%M:%S')
         data['SICKEN_TIME'] = pd.to_datetime(data['SICKEN_TIME'], format='%Y-%m-%d %H:%M:%S')
 
-        #TODO 家里网太慢了明天搞
-        # data[['ICD10_2', 'ICD10_3', 'ICD10_4']] = data.apply(query_icd, axis=1, result_type="expand")
-        # print(data)
+        data[['ICD10_2', 'ICD10_3', 'ICD10_4']] = data.apply(query_icd, axis=1, result_type="expand")
+        print(data)
         rate = 70
         source_init_record(source_id, rate, 0)
 
@@ -285,6 +284,7 @@ def test_b(param_data: dict, param_sign):
     sicken_time = param_data.get('sicken_time', [])
     age_groups = param_data.get('age_groups', [])
     icd10s = param_data.get('icd10s', [])
+    icd_level = param_data.get('icd_level', 4)
 
     data_source = DataSource.query.filter(DataSource.sign == source).first()
     file_path = data_source.path
@@ -306,6 +306,8 @@ def test_b(param_data: dict, param_sign):
                 <=
                 datetime.datetime.strptime(sicken_time[1], '%Y-%m-%d')
             ))]
+        if icd_level:
+            data['ICD10'] = data['ICD10_' + str(icd_level)]
         if icd10s:
             data = data[(data['ICD10'].map(lambda x: x in icd10s))]
 

@@ -8,6 +8,7 @@ celery==4.3.0
 certifi==2020.11.8
 chardet==3.0.4
 Click==7.0
+dill==0.3.3
 Flask==1.1.1
 Flask-Celery==2.4.3
 Flask-Celery-Helper==1.1.0
@@ -24,13 +25,15 @@ gunicorn==19.9.0
 idna==2.8
 itsdangerous==1.1.0
 Jinja2==2.10.1
+joblib==1.0.1
 kombu==4.6.3
 lxml==4.3.4
 Mako==1.0.14
 MarkupSafe==1.1.1
 mock==2.0.0
 more-itertools==7.2.0
-numpy==1.19.4
+numpy>=1.17
+pandarallel==1.5.2
 pandas==1.1.5
 pbr==5.4.1
 pluggy==0.6.0

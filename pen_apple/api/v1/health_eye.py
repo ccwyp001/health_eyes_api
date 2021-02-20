@@ -69,6 +69,8 @@ class DataListApi(Resource):
         sicken_time = data.get('sickenTime', [])
         age_groups = data.get('age', [])
         icd10s = data.get('icd10', [])
+        level = data.get('level', 4)
+
         data_source = DataSource.query.filter(DataSource.id == int(source)).first()
         if not data_source:
             data_source = DataSource.query.first()
@@ -83,6 +85,7 @@ class DataListApi(Resource):
             'sicken_time': sicken_time,
             'age_groups': age_groups_sign,
             'icd10s': icd10s,
+            'icd_level': level,
         }
         # print(data)
         _ = params_encrypt(data, 'healtheye666')
@@ -129,7 +132,12 @@ class GeoConfigApi(Resource):
 @api.resource('/config/age_groups')
 class GroupsConfigApi(Resource):
     def get(self):
-        data = AgeGroup.query.all()
+        params = request.args
+        enabled = int(params.get('enabled', 0))
+        if enabled:
+            data = AgeGroup.query.filter(AgeGroup.disabled == 0).all()
+        else:
+            data = AgeGroup.query.all()
         return [_.display() for _ in data]
 
     def post(self):
@@ -232,9 +240,13 @@ class Icd10ListApi(Resource):
 class DataSourcesApi(Resource):
     def get(self):
         params = request.args
+        enabled = int(params.get('enabled', 0))
         page = int(params.get('currentPage', 1))
         per_page = int(params.get('pageSize', 10))
-        _paginate = DataSource.query.paginate(page, per_page, error_out=False)
+        if enabled:
+            _paginate = DataSource.query.filter(DataSource.status == enabled).paginate(page, per_page, error_out=False)
+        else:
+            _paginate = DataSource.query.paginate(page, per_page, error_out=False)
         return {
             'list': [_.display() for _ in _paginate.items],
             'pagination': {
