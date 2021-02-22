@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-
+import chardet
 import hashlib
 from math import ceil
 
@@ -8,6 +8,12 @@ def md5_code(text):
     md = hashlib.md5()
     md.update(text.encode())
     return md.hexdigest().upper()
+
+
+def str_coding(f):
+    with open(f, 'rb') as _:
+        _str = _.readline()
+    return chardet.detect(_str)['encoding']
 
 
 def params_encrypt(t1: dict, t2: str):

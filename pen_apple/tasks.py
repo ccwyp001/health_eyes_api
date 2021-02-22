@@ -10,6 +10,7 @@ import uuid
 import requests
 # from suds.client import Client
 from flask import current_app
+from .commons.utils import str_coding
 from .extensions import celery, db
 from .models import DataOption, DataResult, AnalysisRecord, DataSource, AgeGroup, Icd10Data
 from hashlib import md5
@@ -191,11 +192,13 @@ def pre_deal(file_path, col_list=None):
     :param col_list: cols list which used
     :return: file data stream
     """
+    encoding = str_coding(file_path)
+    encoding = [encoding, 'gbk'][encoding == 'GB2312']
 
     if file_path.split('.')[-1] == 'csv':
-        data = pd.read_csv(file_path, usecols=col_list)
+        data = pd.read_csv(file_path, usecols=col_list, encoding=encoding)
     else:
-        data = pd.read_excel(file_path, usecols=col_list)
+        data = pd.read_excel(file_path, usecols=col_list, encoding=encoding)
     # data.to_csv('eee.csv', index=False, header=False, mode='a')
     print(data.columns.to_list())
 
@@ -291,7 +294,6 @@ def test_b(param_data: dict, param_sign):
 
     try:
         # 读入数据
-        # data = pre_deal(file_path)
         data = load_hdf(file_path)
         # initializing
         analysis_record(param_sign, 1)

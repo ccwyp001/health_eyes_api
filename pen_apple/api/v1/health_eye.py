@@ -5,7 +5,7 @@ from functools import wraps
 from flask import Blueprint, request, jsonify, current_app, abort, Response
 from flask_restful import Api, Resource
 from ...commons import exceptions
-from ...commons.utils import checksum_md5, params_encrypt, md5_code
+from ...commons.utils import checksum_md5, params_encrypt, md5_code, str_coding
 from ...models import GeoData, DataSource, DataOption, DataResult, Icd10Data, AgeGroup, AnalysisRecord
 from ...extensions import db
 from ...tasks import test, test_b
@@ -268,11 +268,13 @@ class DataSourcesApi(Resource):
         if exist_data:
             os.remove(save_path)
             abort(400, 'this file is exists')
+        encoding = str_coding(save_path)
+        encoding = [encoding, 'gbk'][encoding == 'GB2312']
 
         if save_path.split('.')[-1] == 'csv':
-            data = pd.read_csv(save_path)
+            data = pd.read_csv(save_path, encoding=encoding)
         else:
-            data = pd.read_excel(save_path)
+            data = pd.read_excel(save_path, encoding=encoding)
 
         data = {'name': file.filename.split('.')[0],
                 'path': save_path,
