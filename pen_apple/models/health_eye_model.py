@@ -140,7 +140,7 @@ class AgeGroup(db.Model):
     group = db.Column(db.Text)
     sign = db.Column(db.String(100))
     update_at = db.Column(SLBigInteger)
-    disabled = db.Column(db.Integer)
+    disabled = db.Column(db.Integer, default=0)
 
     def __repr__(self):
         return '<AgeGroup %r>' % self.id

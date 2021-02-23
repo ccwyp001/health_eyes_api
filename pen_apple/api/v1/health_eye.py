@@ -135,7 +135,7 @@ class GroupsConfigApi(Resource):
         params = request.args
         enabled = int(params.get('enabled', 0))
         if enabled:
-            data = AgeGroup.query.filter(AgeGroup.disabled == 0).all()
+            data = AgeGroup.query.filter(AgeGroup.disabled != 1).all()
         else:
             data = AgeGroup.query.all()
         return [_.display() for _ in data]
@@ -274,7 +274,7 @@ class DataSourcesApi(Resource):
         if save_path.split('.')[-1] == 'csv':
             data = pd.read_csv(save_path, encoding=encoding)
         else:
-            data = pd.read_excel(save_path, encoding=encoding)
+            data = pd.read_excel(save_path)
 
         data = {'name': file.filename.split('.')[0],
                 'path': save_path,

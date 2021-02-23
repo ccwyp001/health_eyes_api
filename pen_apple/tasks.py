@@ -11,6 +11,7 @@ import requests
 # from suds.client import Client
 from flask import current_app
 from .commons.utils import str_coding
+from .commons.exceptions import ItemDoesNotExist
 from .extensions import celery, db
 from .models import DataOption, DataResult, AnalysisRecord, DataSource, AgeGroup, Icd10Data
 from hashlib import md5
@@ -198,7 +199,7 @@ def pre_deal(file_path, col_list=None):
     if file_path.split('.')[-1] == 'csv':
         data = pd.read_csv(file_path, usecols=col_list, encoding=encoding)
     else:
-        data = pd.read_excel(file_path, usecols=col_list, encoding=encoding)
+        data = pd.read_excel(file_path, usecols=col_list)
     # data.to_csv('eee.csv', index=False, header=False, mode='a')
     print(data.columns.to_list())
 
@@ -235,7 +236,7 @@ def test(source_id):
         for k, v in cols_config.items():
             data[k] = pre_data[v]
 
-        data['NL'] = pd.to_numeric(data['NL'], errors='coerce', downcast='integer')
+        data['NL'] = pd.to_numeric(data['NL'], errors='coerce', downcast='float')
         data['ORG_CODE'] = data['ORG_CODE'].astype('category')
         data['INS'] = data['INS'].astype('category')
         data['TOWN'] = data['TOWN'].astype('category')
@@ -317,6 +318,8 @@ def test_b(param_data: dict, param_sign):
         df_new = g.count().sort_values(by=['IDCARD'], ascending=0)
         gg = df_new['IDCARD'].head(10).to_dict()
         filter_data = data[(data['ICD10'].map(lambda x: x in list(gg.keys())))]
+        if filter_data.empty:
+            raise ItemDoesNotExist('查询数据为空, 请重新选择筛选项')
         # processing
         analysis_record(param_sign, 2)
         func_list = ['top', 'town_dis', 'org_dis', 'age_dis', 'occ_dis', 'gender_dis', 'ins_dis', 'time_dis']
@@ -340,6 +343,6 @@ def test_b(param_data: dict, param_sign):
     except Exception as e:
         print(e)
         traceback.print_exc()
-        analysis_record(param_sign, 99)
+        analysis_record(param_sign, 99, value=str(e))
 
     return True
