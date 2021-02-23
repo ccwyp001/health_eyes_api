@@ -42,7 +42,7 @@ def function_top(data, filter_data, **kwargs):
     g = data.groupby(['ICD10'])
     df_new = g.count().sort_values(by=['IDCARD'], ascending=0)
     gg = df_new['IDCARD'].head(10).to_dict()
-    return [{'x': k, 'y': v} for k, v in gg.items()]
+    return [{'x': k, 'y': v, 'n': query_icd_name(k)} for k, v in gg.items()]
 
 
 def function_org_dis(data, filter_data, **kwargs):
@@ -63,7 +63,6 @@ def function_org_dis(data, filter_data, **kwargs):
 
 
 def function_time_dis(data, filter_data, **kwargs):
-
     g = filter_data.groupby(['ICD10'])
     df_new = g.resample('D').count()
     gg = df_new['IDCARD'].fillna(0).to_dict()
@@ -204,6 +203,12 @@ def pre_deal(file_path, col_list=None):
     print(data.columns.to_list())
 
     return data
+
+
+def query_icd_name(code):
+    _ = Icd10Data.query.filter(Icd10Data.code == code).first()
+
+    return _.name if _ else code
 
 
 def query_icd(row):
