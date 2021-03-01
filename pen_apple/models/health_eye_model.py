@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from ..extensions import db, SLBigInteger
+from ..extensions import db, SLBigInteger, LongText
 import time
 import json
 
@@ -108,7 +108,7 @@ class DataResult(db.Model):
     sign = db.Column(db.String(100), db.ForeignKey('analysis_record.sign'))
     record = db.relationship('AnalysisRecord', backref='results', lazy='select')
     name = db.Column(db.String(20))
-    result = db.Column(db.Text)
+    result = db.Column(LongText)
     state = db.Column(db.Integer)
     update_at = db.Column(SLBigInteger)
 

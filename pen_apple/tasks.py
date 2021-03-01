@@ -212,7 +212,7 @@ def query_icd_name(code):
 
 
 def query_icd(row):
-    _ = Icd10Data.query.filter(Icd10Data.code == row['ICD10']).first()
+    _ = Icd10Data.query.filter(Icd10Data.code == str(row['ICD10'])).first()
     result = [None, None, None]
 
     def set_code(i):
