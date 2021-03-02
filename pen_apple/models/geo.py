@@ -41,11 +41,13 @@ class GeoData(db.Model):
 
     def display(self):
         return {
-            # 'children': [_.display() for _ in self.children] if self.children else '',
             'type': 'Feature',
             'properties': {
                 'name': self.name,
-                'center': [self.center_x, self.center_y]
+                'fullname': self.fullname,
+                'center': [self.center_x, self.center_y],
+                'bound': [[self.max_x, self.max_y], [self.min_x, self.min_y]],
+                'children': [_.display() for _ in self.children] if self.children else [],
             },
             'geometry': GeoObject(self.geometry).rawgeojson()
         }

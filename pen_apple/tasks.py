@@ -149,7 +149,31 @@ def function_town_dis(data, filter_data, **kwargs):
     g = filter_data.groupby(['TOWN'])
     df_new = g.count().sort_index(axis=0, ascending=[1])
     gg = df_new['IDCARD'].fillna(0).to_dict()
-    return [{'x': k, 'y': v, 'icds': ggg[k]} for k, v in gg.items()]
+    community_dis = function_community_dis(filter_data)
+    return [{'x': k, 'y': v, 'icds': ggg[k], 'children': community_dis[k]} for k, v in gg.items()]
+
+
+def function_community_dis(filter_data):
+    g = filter_data.groupby(['TOWN', 'COMMUNITY', 'ICD10'])
+    df_new = g.count().sort_index(axis=0, ascending=[1, 1])
+    gg = df_new['IDCARD'].fillna(0).to_dict()
+    ggg = {}
+    for k, v in gg.items():
+        if ggg.get(k[0]):
+            if ggg.get(k[0]).get(k[1]):
+                ggg.get(k[0])[k[1]].update({k[2]: v})
+            else:
+                ggg.get(k[0])[k[1]] = {k[2]: v}
+        else:
+            ggg[k[0]] = {k[1]: {k[2]: v}}
+
+    g = filter_data.groupby(['TOWN', 'COMMUNITY'])
+    df_new = g.count().sort_index(axis=0, ascending=[1])
+    gg = df_new['IDCARD'].fillna(0).to_dict()
+    community_dis = {}
+    [community_dis.update({k[0]: []}) for k, v in gg.items()]
+    [community_dis[k[0]].append({'x': k[1], 'y': v, 'icds': ggg[k[0]][k[1]]}) for k, v in gg.items()]
+    return community_dis
 
 
 def analysis_record(sign, state, exists_flag=False, value=''):
@@ -328,9 +352,7 @@ def test_b(param_data: dict, param_sign):
         # processing
         analysis_record(param_sign, 2)
         func_list = ['top', 'town_dis', 'org_dis', 'age_dis', 'occ_dis', 'gender_dis', 'ins_dis', 'time_dis']
-        # func_name = 'org_dis'
-        # value = globals()['function_' + func_name](data, filter_data)
-        # result_record(param_sign, func_name, value, state=2)
+
         [result_record(
             param_sign,
             name,
