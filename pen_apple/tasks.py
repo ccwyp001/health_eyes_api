@@ -150,7 +150,7 @@ def function_town_dis(data, filter_data, **kwargs):
     df_new = g.count().sort_index(axis=0, ascending=[1])
     gg = df_new['IDCARD'].fillna(0).to_dict()
     community_dis = function_community_dis(filter_data)
-    return [{'x': k, 'y': v, 'icds': ggg[k], 'children': community_dis[k]} for k, v in gg.items()]
+    return [{'x': k, 'y': v, 'icds': ggg[k], 'children': community_dis.get(k, [])} for k, v in gg.items()]
 
 
 def function_community_dis(filter_data):
