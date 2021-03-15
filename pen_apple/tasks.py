@@ -18,7 +18,7 @@ from hashlib import md5
 import pandas as pd
 
 
-def result_record(sign, name, value, state, sleep_time=0):
+def result_record(sign, name, value, state, sleep_time=0.1):
     print(name)
     if sleep_time:
         time.sleep(sleep_time)
@@ -171,8 +171,8 @@ def function_community_dis(filter_data):
     df_new = g.count().sort_index(axis=0, ascending=[1])
     gg = df_new['IDCARD'].fillna(0).to_dict()
     community_dis = {}
-    [community_dis.update({k[0]: []}) for k, v in gg.items()]
-    [community_dis[k[0]].append({'x': k[1], 'y': v, 'icds': ggg[k[0]][k[1]]}) for k, v in gg.items()]
+    [community_dis.update({k[0]: []}) for k, v in g]
+    [community_dis[k[0]].append({'x': k[1], 'y': gg.get(k), 'icds': ggg[k[0]][k[1]]}) for k, v in g]
     return community_dis
 
 
@@ -363,8 +363,7 @@ def test_b(param_data: dict, param_sign):
             param_sign,
             name,
             globals()['function_' + name](data, filter_data, **{'age_groups': age_groups}),
-            2,
-            1
+            2
         ) for name in func_list]
         analysis_record(param_sign, 3)
     except Exception as e:
