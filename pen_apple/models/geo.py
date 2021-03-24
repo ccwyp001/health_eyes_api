@@ -52,10 +52,62 @@ class GeoData(db.Model):
             'geometry': GeoObject(self.geometry).rawgeojson()
         }
 
+    def display_with_trans(self):
+        return {
+            'name': self.name,
+            'fullname': self.fullname,
+            'trans': [_.display() for _ in self.trans] if self.trans else [],
+        }
+
     @staticmethod
     def new(kwargs):
         update_at = int(time.time())
         _ = GeoData(**kwargs)
+        _.update_at = update_at
+        return _
+
+    def update(self, kwargs):
+        update_at = int(time.time())
+        kwargs['update_at'] = update_at
+        for k, v in kwargs.items():
+            setattr(self, k, v)
+        return self
+
+    @classmethod
+    def from_data(cls, data):
+        pass
+
+
+class GeoTransData(db.Model):
+    __tablename__ = 'geo_trans'
+    id = db.Column(SLBigInteger, primary_key=True)
+    name = db.Column(db.String(20))
+    fullname = db.Column(db.String(30), unique=True)
+    geo_name = db.Column(db.String(30), db.ForeignKey('geo.fullname'), nullable=True)
+    type = db.Column(db.Integer)  # 1 merger, 2 alias
+    enabled = db.Column(db.Integer, default=1)  # 1 enabled 0 not
+    geo_data = db.relationship('GeoData', backref='trans', lazy='select')
+    update_at = db.Column(SLBigInteger)
+
+    def __repr__(self):
+        return '<GeoTransData %r>' % self.name
+
+    def to_dict(self):
+        return {c.name: getattr(self, c.name, None) for c in self.__table__.columns}
+
+    def display(self):
+        return {
+            'name': self.name,
+            'fullname': self.fullname,
+            'type': self.type,
+            'enabled': self.enabled,
+            'update_at': self.update_at,
+        }
+
+    @staticmethod
+    def new(kwargs):
+        update_at = int(time.time())
+        _ = GeoTransData(**kwargs)
         _.update_at = update_at
         return _
 

@@ -6,7 +6,7 @@ from flask import Blueprint, request, jsonify, current_app, abort, Response
 from flask_restful import Api, Resource
 from ...commons import exceptions
 from ...commons.utils import checksum_md5, params_encrypt, md5_code, str_coding
-from ...models import GeoData, DataSource, DataOption, DataResult, Icd10Data, AgeGroup, AnalysisRecord
+from ...models import GeoData, DataSource, DataOption, DataResult, Icd10Data, AgeGroup, AnalysisRecord, GeoTransData
 from ...extensions import db
 from ...tasks import test, test_b
 import os
@@ -211,6 +211,45 @@ class GeoApi(Resource):
                 'features': [_.display() for _ in v_list.children]
             } if v_list else {}
         return {}
+
+
+@api.resource('/geo_trans')
+class GeoTransApi(Resource):
+    def get(self):
+        params = request.args
+        arg = params.get('fullname', 0)
+        if arg:
+            v_list = GeoData.query.filter(GeoData.fullname == arg).first()
+            return [
+                _.display_with_trans() for _ in v_list.children
+            ] if v_list else []
+        return []
+
+    def post(self):
+        """
+
+        :rtype: str
+        """
+        data = request.json
+        name = data.get('name', '')
+        geo_name = data.get('geo_name', '')
+        geo_data = GeoData.query.filter(GeoData.fullname == geo_name).first()
+        if len(name) < 3:
+            return 'name is needed'
+        if not geo_data:
+            return 'geo data not found'
+        fullname = geo_data.address + name
+        trans_data = GeoTransData.query.filter(GeoTransData.fullname == fullname).first()
+        data['name'] = name
+        data['fullname'] = fullname
+        if trans_data:
+            trans_data.update(data)
+        else:
+            trans_data = GeoTransData.new(data)
+
+        with db.auto_commit_db():
+            db.session.add(trans_data)
+        return 'ok'
 
 
 @api.resource('/icd10_list/_search')
