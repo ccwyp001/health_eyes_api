@@ -220,6 +220,7 @@ class GeoTransApi(Resource):
         arg = params.get('fullname', 0)
         if arg:
             v_list = GeoData.query.filter(GeoData.fullname == arg).first()
+
             return [
                 _.display_with_trans() for _ in v_list.children
             ] if v_list else []
@@ -239,6 +240,9 @@ class GeoTransApi(Resource):
         if not geo_data:
             return 'geo data not found'
         fullname = geo_data.address + name
+        _check = GeoData.query.filter(GeoData.fullname == fullname).first()
+        if _check:
+            return 'this alias name is geo data'
         trans_data = GeoTransData.query.filter(GeoTransData.fullname == fullname).first()
         data['name'] = name
         data['fullname'] = fullname
