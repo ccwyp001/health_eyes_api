@@ -218,24 +218,20 @@ class GeoTransApi(Resource):
     def get(self):
         params = request.args
         arg = params.get('fullname', 0)
-        if arg:
-            v_list = GeoData.query.filter(GeoData.fullname == arg).first()
-
-            return [
-                _.display_with_trans() for _ in v_list.children
-            ] if v_list else []
-        return []
+        v_list = GeoData.query.filter(GeoData.fullname == arg).first()
+        if v_list:
+            children = [_.display_with_trans() for _ in v_list.children]
+            _result = v_list.display_with_trans()
+            _result.update({'children': children})
+            return _result
+        return {}
 
     def post(self):
-        """
-
-        :rtype: str
-        """
         data = request.json
         name = data.get('name', '')
         geo_name = data.get('geo_name', '')
         geo_data = GeoData.query.filter(GeoData.fullname == geo_name).first()
-        if len(name) < 3:
+        if len(name) < 2:
             return 'name is needed'
         if not geo_data:
             return 'geo data not found'
@@ -253,6 +249,16 @@ class GeoTransApi(Resource):
 
         with db.auto_commit_db():
             db.session.add(trans_data)
+        return 'ok'
+
+    def delete(self):
+        params = request.args
+        fullname = params.get('fullname', 0)
+        trans_data = GeoTransData.query.filter(GeoTransData.fullname == fullname).first()
+        if not trans_data:
+            return 'trans data not found'
+        with db.auto_commit_db():
+            db.session.delete(trans_data)
         return 'ok'
 
 

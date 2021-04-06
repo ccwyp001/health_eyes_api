@@ -54,6 +54,7 @@ class GeoData(db.Model):
 
     def display_with_trans(self):
         return {
+            'key': self.id,
             'name': self.name,
             'fullname': self.fullname,
             'trans': [_.display() for _ in self.trans] if self.trans else [],
